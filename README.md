@@ -110,27 +110,7 @@ All existing functionality (timetable generation, editing, deleting, LocalStorag
 
 ---
 
-## Project Folder Structure
 
-```text
-student-study-planner/
-│
-├── .gitignore                # New gitignore added
-├── public/
-├── src/
-│   ├── components/
-│   │   └── ...
-│   ├── pages/
-│   │   ├── Timetable.jsx     # Updated UI redesign
-│   │   └── ...
-│   ├── styles/
-│   │   └── app.css            # Updated styling for timetable
-│   └── ...
-├── index.html
-├── package.json
-├── vite.config.js
-├── vercel.json
-└── README.md                 # Updated documentation
 ```
 
 The timetable generator implements strict deterministic logic without machine learning:
