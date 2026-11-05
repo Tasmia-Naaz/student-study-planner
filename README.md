@@ -211,6 +211,4 @@ student-study-planner/
 
 ---
 
-## License & Attribution
 
-Designed and developed as a complete college mini-project demonstration for academic study management and realistic timetable generation.
