@@ -1,18 +1,18 @@
 import { toMin, toHHMM, todayStr, addDays, uid } from './dates';
 
 export const SUBJECT_COLORS = [
-  { label: 'Royal Blue', hex: '#2563eb' },
-  { label: 'Teal', hex: '#0f766e' },
-  { label: 'Purple', hex: '#7c3aed' },
-  { label: 'Coral Orange', hex: '#ea580c' },
-  { label: 'Crimson', hex: '#dc2626' },
-  { label: 'Indigo', hex: '#4f46e5' },
-  { label: 'Emerald', hex: '#059669' },
-  { label: 'Amber Gold', hex: '#d97706' },
-  { label: 'Cyan', hex: '#0891b2' },
-  { label: 'Rose Pink', hex: '#db2777' },
-  { label: 'Slate', hex: '#475569' },
-  { label: 'Lime Green', hex: '#65a30d' },
+  { label: 'Slate Blue', hex: '#607d9b' },
+  { label: 'Sage', hex: '#648c86' },
+  { label: 'Dusty Purple', hex: '#867b9c' },
+  { label: 'Terracotta', hex: '#b48266' },
+  { label: 'Dusty Rose', hex: '#a5686b' },
+  { label: 'Muted Indigo', hex: '#7784a6' },
+  { label: 'Soft Green', hex: '#6c9278' },
+  { label: 'Muted Amber', hex: '#b0935b' },
+  { label: 'Steel Blue', hex: '#658d98' },
+  { label: 'Mauve', hex: '#a5798c' },
+  { label: 'Slate', hex: '#64748b' },
+  { label: 'Olive', hex: '#829267' },
 ];
 
 export function getSubjectColor(subject, index = 0) {

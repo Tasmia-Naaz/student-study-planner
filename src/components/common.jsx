@@ -1,3 +1,4 @@
+import { Children, cloneElement, isValidElement, useId } from 'react';
 import { SUBJECT_COLORS } from '../utils/defaults';
 
 export function Modal({ title, onClose, children, footer, size }) {
@@ -111,10 +112,21 @@ export function Empty({ icon = 'inbox', children }) {
 }
 
 export function Field({ label, children, className = 'col-12', help }) {
+  const controlId = useId();
+  const child = Children.count(children) === 1 ? Children.only(children) : null;
+  const isDirectControl = isValidElement(child)
+    && ['input', 'select', 'textarea'].includes(child.type);
+  const control = isDirectControl && !child.props.id
+    ? cloneElement(child, { id: controlId })
+    : child;
   return (
     <div className={className}>
-      {label && <label className="form-label small fw-semibold mb-1">{label}</label>}
-      {children}
+      {label && (
+        <label className="form-label small fw-semibold mb-1" htmlFor={isDirectControl ? child.props.id || controlId : undefined}>
+          {label}
+        </label>
+      )}
+      {control || children}
       {help && <div className="form-text mt-1">{help}</div>}
     </div>
   );
@@ -123,10 +135,9 @@ export function Field({ label, children, className = 'col-12', help }) {
 export function SubjectColorBadge({ color, name, code, className = '' }) {
   return (
     <span
-      className={`badge d-inline-flex align-items-center gap-1 ${className}`}
+      className={`badge subject-color-badge d-inline-flex align-items-center gap-1 ${className}`}
       style={{
-        backgroundColor: color || '#0f766e',
-        color: '#ffffff',
+        '--subject-color': color || '#607d9b',
         fontWeight: 600,
         fontSize: '0.75rem',
         padding: '0.3em 0.55em',
@@ -138,7 +149,7 @@ export function SubjectColorBadge({ color, name, code, className = '' }) {
           width: 6,
           height: 6,
           borderRadius: '50%',
-          backgroundColor: '#ffffff',
+          backgroundColor: 'var(--subject-color)',
           display: 'inline-block',
         }}
       />

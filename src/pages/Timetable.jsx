@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../hooks/useStore';
+import { apiRequest } from '../utils/api';
 import { Modal, PageHeader, Empty, Field, ColorSwatchSelector } from '../components/common';
 import {
   addDays,
@@ -55,6 +56,54 @@ function getSessionBadgeClass(label) {
 export default function Timetable({ go }) {
   const { data, patch, upsert, remove, toggleSession } = useStore();
   const today = todayStr();
+  const [backlogs, setBacklogs] = useState([]);
+  const [backlogError, setBacklogError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    apiRequest('/students/me/backlogs')
+      .then((items) => {
+        if (active) {
+          setBacklogs(items.filter((item) => item.status !== 'Cleared'));
+          setBacklogError('');
+        }
+      })
+      .catch((error) => {
+        if (active) setBacklogError(`Backlog subjects could not be loaded: ${error.message}`);
+      });
+    return () => { active = false; };
+  }, []);
+
+  const timetableSubjects = useMemo(() => [
+    ...(data.subjects || []),
+    ...backlogs.map((backlog) => ({
+      id: `backlog-${backlog.id}`,
+      name: backlog.subject_name,
+      code: backlog.subject_code,
+      semester: backlog.semester,
+      priority: backlog.priority,
+      progress: backlog.progress,
+      status: backlog.status,
+      deadline: backlog.exam_date,
+      category: 'college',
+      difficulty: backlog.priority === 'High' ? 'Hard' : backlog.priority === 'Low' ? 'Easy' : 'Medium',
+      topics: [],
+      examId: backlog.exam_date ? `backlog-exam-${backlog.id}` : '',
+      isBacklog: true,
+    })),
+  ], [data.subjects, backlogs]);
+  const timetableData = useMemo(() => ({
+    ...data,
+    subjects: timetableSubjects,
+    exams: [
+      ...(data.exams || []),
+      ...backlogs.filter((backlog) => backlog.exam_date).map((backlog) => ({
+        id: `backlog-exam-${backlog.id}`,
+        date: backlog.exam_date,
+        type: 'Backlog',
+      })),
+    ],
+  }), [data, timetableSubjects, backlogs]);
 
   // State: selected date view
   const [selectedDate, setSelectedDate] = useState(today);
@@ -76,14 +125,14 @@ export default function Timetable({ go }) {
   // Build subject lookup map for colors, codes, and names
   const subjectMap = useMemo(() => {
     const map = {};
-    (data.subjects || []).forEach((s, idx) => {
+    timetableSubjects.forEach((s, idx) => {
       map[s.id] = {
         ...s,
         color: getSubjectColor(s, idx),
       };
     });
     return map;
-  }, [data.subjects]);
+  }, [timetableSubjects]);
 
   // Filter visible sessions according to scope (Combined, College, or Outside Exam)
   const isVisibleInScope = (s) => {
@@ -122,7 +171,7 @@ export default function Timetable({ go }) {
 
   // Timetable Generator execution
   const handleGenerate = () => {
-    const res = generateTimetable(data, {
+    const res = generateTimetable(timetableData, {
       startDate: gen.startDate,
       days: Number(gen.days),
       track: gen.track,
@@ -154,7 +203,7 @@ export default function Timetable({ go }) {
   };
 
   const openNewSession = (date) => {
-    const defaultSub = data.subjects[0];
+    const defaultSub = timetableSubjects[0];
     setForm({
       id: uid(),
       date: date || selectedDate,
@@ -219,6 +268,7 @@ export default function Timetable({ go }) {
           <i className="bi bi-plus-lg me-1" /> Add Session
         </button>
       </PageHeader>
+      {backlogError && <div className="alert alert-warning" role="alert">{backlogError}</div>}
 
       {/* Generator Control Panel (Expandable / Clean) */}
       {showGenPanel && (
@@ -801,9 +851,9 @@ export default function Timetable({ go }) {
                     }}
                   >
                     <option value="">None / Custom Study</option>
-                    {data.subjects.map((s) => (
+                    {timetableSubjects.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.code ? `[${s.code}] ` : ''}{s.name} ({s.category === 'exam' ? 'Outside Exam' : 'College'})
+                        {s.isBacklog ? '[Backlog] ' : ''}{s.code ? `[${s.code}] ` : ''}{s.name}{s.isBacklog ? ` (Semester ${s.semester})` : ` (${s.category === 'exam' ? 'Outside Exam' : 'College'})`}
                       </option>
                     ))}
                   </select>

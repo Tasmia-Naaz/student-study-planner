@@ -1,8 +1,10 @@
-import { useRef, useState } from 'react';
+import { useState, useRef, useContext } from 'react';
 import { useStore, normalize } from '../hooks/useStore';
 import { PageHeader, Field, ConfirmModal } from '../components/common';
 import { DAY_LONG, DAY_NAMES, fmtDate, fmtTime, uid } from '../utils/dates';
 import { defaultData, defaultAvailability, getSampleData } from '../utils/defaults';
+import { AuthContext } from '../context/AuthContext';
+import AccountSettings from './AccountSettings';
 
 function Num({ label, k, min = 1, max, className = 'col-6 col-md-4', suffix, s, setSetting }) {
   return (
@@ -24,14 +26,17 @@ function Num({ label, k, min = 1, max, className = 'col-6 col-md-4', suffix, s, 
 
 export default function Settings() {
   const { data, patch, setData, setSetting, upsert, remove } = useStore();
+  const { user } = useContext(AuthContext);
   const s = data.settings || {};
-  const fileRef = useRef(null);
-  const [note, setNote] = useState(null);
-  const [confirmClear, setConfirmClear] = useState(false);
-  const [confirmLoadSample, setConfirmLoadSample] = useState(false);
-  const [c, setC] = useState({ title: '', day: 'all', start: '17:00', end: '19:00' });
 
-  const setProfile = (k, v) => patch('profile', (p) => ({ ...p, [k]: v }));
+  const [note, setNote] = useState(null);
+
+  const [confirmLoadSample, setConfirmLoadSample] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [c, setC] = useState({ title: '', day: 'all', start: '17:00', end: '18:00' });
+  const fileRef = useRef(null);
+
+  const setProfile = (key, value) => patch('profile', (profile) => ({ ...profile, [key]: value }));
 
   const setWindow = (day, type, i, key, val) =>
     patch('availability', (a) => {
@@ -144,7 +149,7 @@ export default function Settings() {
     setConfirmLoadSample(false);
     setNote({
       type: 'success',
-      text: 'Realistic mini-project demo data successfully loaded with subjects, exams, assignments, timetable sessions, and progress logs!',
+      text: 'Realistic demo data successfully loaded with subjects, exams, assignments, timetable sessions, and progress logs!',
     });
   };
 
@@ -152,11 +157,13 @@ export default function Settings() {
     <>
       <PageHeader
         title="Settings & System Preferences"
-        subtitle="Manage student profile, appearance theme, timetable generator rules, daily availability, and data backup."
+        subtitle="Manage your account and preferences."
       >
-        <button className="btn btn-outline-success" onClick={() => setConfirmLoadSample(true)}>
-          <i className="bi bi-box-arrow-in-down me-1" /> Load Sample Demo Data
-        </button>
+        {user?.role === 'student' && (
+          <button className="btn btn-outline-success" onClick={() => setConfirmLoadSample(true)}>
+            <i className="bi bi-box-arrow-in-down me-1" /> Load Sample Demo Data
+          </button>
+        )}
       </PageHeader>
 
       {note && (
@@ -166,24 +173,17 @@ export default function Settings() {
         </div>
       )}
 
-      {/* Student Profile Card */}
+      <AccountSettings />
+
+      {user?.role === 'student' && <>
       <div className="card mb-4 border-0 shadow-sm">
         <div className="card-header bg-transparent fw-bold border-bottom">
-          <i className="bi bi-person-badge text-primary me-2" />
-          Student Profile
+          <i className="bi bi-building text-primary me-2" />
+          Planner Profile Details
         </div>
         <div className="card-body">
           <div className="row g-3">
-            <Field label="Full Name" className="col-12 col-md-4">
-              <input
-                className="form-control"
-                value={data.profile.name || ''}
-                onChange={(e) => setProfile('name', e.target.value)}
-                placeholder="e.g. Alex Morgan"
-              />
-            </Field>
-
-            <Field label="College / University Name" className="col-12 col-md-4">
+            <Field label="College / University Name" className="col-12 col-md-6">
               <input
                 className="form-control"
                 value={data.profile.college || ''}
@@ -191,16 +191,25 @@ export default function Settings() {
                 placeholder="e.g. National Institute of Technology"
               />
             </Field>
-
-            <Field label="Course / Department / Year" className="col-12 col-md-4">
+            <Field label="Course / Program" className="col-12 col-md-6">
               <input
                 className="form-control"
                 value={data.profile.course || ''}
                 onChange={(e) => setProfile('course', e.target.value)}
-                placeholder="e.g. B.Tech Computer Science (3rd Year)"
+                placeholder="e.g. B.Tech"
               />
             </Field>
+          </div>
+        </div>
+      </div>
 
+      <div className="card mb-4 border-0 shadow-sm">
+        <div className="card-header bg-transparent fw-bold border-bottom">
+          <i className="bi bi-sliders text-primary me-2" />
+          Planner Preferences
+        </div>
+        <div className="card-body">
+          <div className="row g-3">
             <Num
               s={s}
               setSetting={setSetting}
@@ -346,9 +355,8 @@ export default function Settings() {
                   <button
                     key={d}
                     type="button"
-                    className={`btn btn-sm ${
-                      (s.collegeDays || [1, 2, 3, 4, 5]).includes(d) ? 'btn-primary' : 'btn-outline-secondary'
-                    }`}
+                    className={`btn btn-sm ${(s.collegeDays || [1, 2, 3, 4, 5]).includes(d) ? 'btn-primary' : 'btn-outline-secondary'
+                      }`}
                     onClick={() => toggleCollegeDay(d)}
                   >
                     {DAY_NAMES[d]}
@@ -606,7 +614,8 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Data Management: Export, Import, Reset */}
+      {// Removed LocalStorage Data Management & Backup section as per request
+      }
       <div className="card mb-4 border-0 shadow-sm">
         <div className="card-header bg-transparent fw-bold border-bottom">
           <i className="bi bi-database text-primary me-2" />
@@ -657,6 +666,7 @@ export default function Settings() {
         onConfirm={loadSample}
         onCancel={() => setConfirmLoadSample(false)}
       />
+      </>}
     </>
   );
 }

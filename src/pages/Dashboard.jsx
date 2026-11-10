@@ -1,6 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import { useStore } from '../hooks/useStore';
+import { AuthContext } from '../context/AuthContext';
+import { apiRequest } from '../utils/api';
 import { PageHeader, StatCard, ProgressBar, Empty, SubjectColorBadge } from '../components/common';
 import { addDays, daysBetween, fmtHours, fmtTimeRange, hoursNum, niceDate, shortDate, todayStr, toMin, durMin } from '../utils/dates';
 import { getReminders } from '../utils/notifications';
@@ -10,11 +12,30 @@ import { getSubjectColor } from '../utils/defaults';
 
 export default function Dashboard({ go }) {
   const { data, toggleSession } = useStore();
+  const { user } = useContext(AuthContext);
+  const [backlogs, setBacklogs] = useState([]);
+  const [mentor, setMentor] = useState(null);
+  const [accountError, setAccountError] = useState('');
+  const [accountLoading, setAccountLoading] = useState(true);
   const today = todayStr();
   const goalMin = (Number(data.settings.dailyGoal) || 0) * 60;
   const timeFormat = data.settings?.timeFormat || '12h';
   const [activeChartTab, setActiveChartTab] = useState('weekly');
   const [showCompletedToday, setShowCompletedToday] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    apiRequest('/students/me/dashboard')
+      .then((result) => {
+        if (active) {
+          setBacklogs(result.backlogs);
+          setMentor(result.mentor);
+        }
+      })
+      .catch((error) => { if (active) setAccountError(error.message); })
+      .finally(() => { if (active) setAccountLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   // Subject lookup helper
   const subjectMap = useMemo(() => {
@@ -33,48 +54,105 @@ export default function Dashboard({ go }) {
   // Calculations for Stat Cards
   const totalSubjects = (data.subjects || []).length;
 
-  const studyTasks = (data.tasks || []).filter((t) => t.kind === 'study');
+  const taskSummary = useMemo(() => {
+    const studyTasks = [];
+    const assignments = [];
+    const projects = [];
+    const deadlines = [];
+    const overdueTasks = [];
+    const recentlyCompleted = [];
+    let actionableCount = 0;
+    let overallCompletedCount = 0;
+    let completedStudyTasks = 0;
+    let completedAssignments = 0;
+    let pendingAssignments = 0;
+    let completedProjects = 0;
+    let overdueAssignmentsCount = 0;
+    for (const task of data.tasks || []) {
+      if (task.kind === 'study') {
+        studyTasks.push(task);
+        if (task.done) completedStudyTasks += 1;
+      }
+      if (task.kind === 'assignment') {
+        assignments.push(task);
+        if (task.done || task.status === 'Submitted') completedAssignments += 1;
+        else {
+          pendingAssignments += 1;
+        }
+        if (!task.done && task.deadline && task.deadline < today) overdueAssignmentsCount += 1;
+      }
+      if (task.kind === 'project') {
+        projects.push(task);
+        if (task.done) completedProjects += 1;
+      }
+      if (task.kind !== 'milestone') {
+        actionableCount += 1;
+        if (task.done) overallCompletedCount += 1;
+      }
+      if (!task.done && task.deadline && task.kind !== 'project') deadlines.push(task);
+      if (!task.done && task.deadline && task.deadline < today) overdueTasks.push(task);
+      if (task.done && recentlyCompleted.length < 5) recentlyCompleted.push(task);
+    }
+    deadlines.sort((a, b) => a.deadline.localeCompare(b.deadline));
+    return {
+      studyTasks,
+      assignments,
+      projects,
+      deadlines: deadlines.slice(0, 6),
+      overdueTasks,
+      recentlyCompleted,
+      actionableCount,
+      overallCompletedCount,
+      completedStudyTasks,
+      pendingAssignments,
+      completedAssignments,
+      completedProjects,
+      overdueAssignmentsCount,
+      activeProjects: projects.length - completedProjects,
+      overallTaskPct: actionableCount ? Math.round((overallCompletedCount / actionableCount) * 100) : 0,
+    };
+  }, [data.tasks, today]);
+  const {
+    studyTasks,
+    assignments,
+    projects,
+    deadlines,
+    overdueTasks,
+    recentlyCompleted,
+    actionableCount,
+    overallCompletedCount,
+    completedStudyTasks,
+    pendingAssignments,
+    completedAssignments,
+    completedProjects,
+    overdueAssignmentsCount,
+    activeProjects,
+    overallTaskPct,
+  } = taskSummary;
   const totalStudyTasks = studyTasks.length;
-  const completedStudyTasks = studyTasks.filter((t) => t.done).length;
-  const pendingStudyTasks = studyTasks.filter((t) => !t.done).length;
-
-  const assignments = (data.tasks || []).filter((t) => t.kind === 'assignment');
+  const pendingStudyTasks = totalStudyTasks - completedStudyTasks;
   const totalAssignments = assignments.length;
-  const completedAssignments = assignments.filter((t) => t.done || t.status === 'Submitted').length;
-  const pendingAssignments = assignments.filter((t) => !t.done && t.status !== 'Submitted').length;
-
-  const projects = (data.tasks || []).filter((t) => t.kind === 'project');
   const totalProjects = projects.length;
-  const completedProjects = projects.filter((t) => t.done).length;
-  const activeProjects = projects.filter((t) => !t.done).length;
-
-  const upcomingExams = (data.exams || [])
-    .filter((e) => e.date >= today)
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const upcomingExams = useMemo(
+    () => (data.exams || []).filter((exam) => exam.date >= today).sort((a, b) => a.date.localeCompare(b.date)),
+    [data.exams, today],
+  );
 
   // Today study time calculations
-  const todaySessions = (data.sessions || []).filter((s) => s.date === today);
-  const todayPlannedMin = todaySessions.filter((s) => s.kind === 'study').reduce((t, s) => t + durMin(s), 0);
-  const todayCompletedMin = (data.logs || []).filter((l) => l.date === today).reduce((t, l) => t + l.minutes, 0);
+  const todaySessions = useMemo(() => (data.sessions || []).filter((session) => session.date === today), [data.sessions, today]);
+  const logTotals = useMemo(() => {
+    const byDate = new Map();
+    const bySubject = new Map();
+    for (const log of data.logs || []) {
+      const minutes = Number(log.minutes) || 0;
+      byDate.set(log.date, (byDate.get(log.date) || 0) + minutes);
+      bySubject.set(log.subjectId, (bySubject.get(log.subjectId) || 0) + minutes);
+    }
+    return { byDate, bySubject };
+  }, [data.logs]);
+  const todayPlannedMin = todaySessions.reduce((total, session) => total + (session.kind === 'study' ? durMin(session) : 0), 0);
+  const todayCompletedMin = logTotals.byDate.get(today) || 0;
   const dailyGoalPct = goalMin > 0 ? Math.round((todayCompletedMin / goalMin) * 100) : 0;
-
-  // Overall task completion calculation
-  const actionableTasks = (data.tasks || []).filter((t) => t.kind !== 'milestone');
-  const overallCompletedCount = actionableTasks.filter((t) => t.done).length;
-  const overallTaskPct = actionableTasks.length > 0 ? Math.round((overallCompletedCount / actionableTasks.length) * 100) : 0;
-
-  // Deadlines and reminders
-  const deadlines = (data.tasks || [])
-    .filter((t) => !t.done && t.deadline && t.kind !== 'project')
-    .sort((a, b) => a.deadline.localeCompare(b.deadline))
-    .slice(0, 6);
-
-  const overdueTasks = (data.tasks || [])
-    .filter((t) => !t.done && t.deadline && t.deadline < today);
-
-  const recentlyCompleted = (data.tasks || [])
-    .filter((t) => t.done)
-    .slice(0, 5);
 
   const reminders = useMemo(() => getReminders(data), [data]);
 
@@ -85,8 +163,8 @@ export default function Dashboard({ go }) {
     datasets: [
       {
         label: 'Actual Study Hours',
-        data: week.map((d) => hoursNum((data.logs || []).filter((l) => l.date === d).reduce((t, l) => t + l.minutes, 0))),
-        backgroundColor: '#0f766e',
+        data: week.map((d) => hoursNum(logTotals.byDate.get(d) || 0)),
+        backgroundColor: '#536f91',
         borderRadius: 5,
       },
     ],
@@ -113,21 +191,20 @@ export default function Dashboard({ go }) {
     datasets: [
       {
         data: [completedStudyTasks, pendingStudyTasks],
-        backgroundColor: ['#059669', '#f59e0b'],
+        backgroundColor: ['#6b9b7c', '#c4a15b'],
         borderWidth: 0,
       },
     ],
   };
 
   // Chart 4: Assignment Status
-  const overdueAssignmentsCount = assignments.filter((a) => !a.done && a.deadline && a.deadline < today).length;
   const inProgressAssignmentsCount = Math.max(0, pendingAssignments - overdueAssignmentsCount);
   const assignmentsChartData = {
     labels: ['Completed / Submitted', 'In Progress', 'Overdue'],
     datasets: [
       {
         data: [completedAssignments, inProgressAssignmentsCount, overdueAssignmentsCount],
-        backgroundColor: ['#059669', '#3b82f6', '#ef4444'],
+        backgroundColor: ['#6b9b7c', '#8299b4', '#b96b70'],
         borderWidth: 0,
       },
     ],
@@ -135,8 +212,8 @@ export default function Dashboard({ go }) {
 
   // Chart 5: Study Hours by Subject
   const subjectHours = (data.subjects || []).map((s) => {
-    const min = (data.logs || []).filter((l) => l.subjectId === s.id).reduce((t, l) => t + l.minutes, 0);
-    return { name: s.code || s.name, hours: hoursNum(min), color: subjectMap[s.id]?.color || '#0f766e' };
+    const min = logTotals.bySubject.get(s.id) || 0;
+    return { name: s.code || s.name, hours: hoursNum(min), color: subjectMap[s.id]?.color || '#536f91' };
   }).filter((x) => x.hours > 0);
 
   const subjectHoursData = {
@@ -157,15 +234,15 @@ export default function Dashboard({ go }) {
       {
         type: 'bar',
         label: 'Study Hours',
-        data: week.map((d) => hoursNum((data.logs || []).filter((l) => l.date === d).reduce((t, l) => t + l.minutes, 0))),
-        backgroundColor: '#2563eb',
+        data: week.map((d) => hoursNum(logTotals.byDate.get(d) || 0)),
+        backgroundColor: '#8299b4',
         borderRadius: 4,
       },
       {
         type: 'line',
         label: 'Daily Target Goal',
         data: week.map(() => hoursNum(goalMin)),
-        borderColor: '#f59e0b',
+        borderColor: '#c4a15b',
         borderDash: [5, 5],
         pointRadius: 0,
         borderWidth: 2,
@@ -189,12 +266,19 @@ export default function Dashboard({ go }) {
     <>
       <PageHeader
         title={data.profile.name ? `Welcome back, ${data.profile.name}` : 'Student Academic Dashboard'}
-        subtitle={`${niceDate(today)} · ${kind === 'college' ? 'College Working Day' : kind === 'holiday' ? 'Holiday / Free Study Day' : 'Unavailable'}`}
+        subtitle={`${niceDate(today)} · ${kind === 'college' ? 'College Working Day' : kind === 'holiday' ? 'Holiday / Free Study Day' : 'Unavailable'}${user?.semester ? ` · Semester ${user.semester}` : ''}`}
       >
         <button className="btn btn-primary" onClick={() => go('timetable')}>
           <i className="bi bi-magic me-1" /> Open Timetable
         </button>
       </PageHeader>
+      <section className="card student-profile-summary mb-4">
+        <div className="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+          <div><div className="small text-secondary text-uppercase">Student profile</div><div className="fw-semibold">{user?.full_name || data.profile.name}{user?.student_id ? ` · ${user.student_id}` : ''}</div><div className="small text-secondary">{user?.department || data.profile.department || 'Department not set'}{user?.academic_year ? ` · Academic year ${user.academic_year}` : ''}{user?.semester ? ` · Semester ${user.semester}` : ''}</div></div>
+          <div className="d-flex flex-wrap gap-3 align-items-center"><div className="small"><span className="text-secondary d-block">Assigned mentor</span><strong>{accountLoading ? 'Loading…' : mentor?.full_name || (accountError ? 'Unavailable' : 'Not assigned')}</strong></div><div className="small"><span className="text-secondary d-block">Active backlogs</span><strong>{accountLoading ? '…' : backlogs.filter((item) => item.status !== 'Cleared').length}</strong></div><div className="small"><span className="text-secondary d-block">Cleared backlogs</span><strong>{accountLoading ? '…' : backlogs.filter((item) => item.status === 'Cleared').length}</strong></div><button className="btn btn-sm btn-outline-primary" onClick={() => go('backlogs')}>View backlogs</button></div>
+        </div>
+        {accountError && <div className="card-footer bg-transparent small text-warning-emphasis">Account dashboard information could not refresh: {accountError}</div>}
+      </section>
 
       {/* Quick Actions Bar */}
       <div className="card mb-4 border-0 shadow-sm bg-body-tertiary">
@@ -253,7 +337,7 @@ export default function Dashboard({ go }) {
             icon="check2-all"
             label="Overall Task Completion"
             value={`${overallTaskPct}%`}
-            hint={`${overallCompletedCount} of ${actionableTasks.length} tasks done`}
+            hint={`${overallCompletedCount} of ${actionableCount} tasks done`}
             tone="info"
           />
         </div>
@@ -447,7 +531,7 @@ export default function Dashboard({ go }) {
           <div className="fw-bold">
             <i className="bi bi-bar-chart-fill text-primary me-2" /> Academic Analytics & Progress Charts
           </div>
-          <div className="btn-group btn-group-sm" role="group" aria-label="Dashboard Charts">
+          <div className="btn-group btn-group-sm dashboard-chart-tabs" role="group" aria-label="Dashboard Charts">
             <button
               className={`btn ${activeChartTab === 'weekly' ? 'btn-primary' : 'btn-outline-secondary'}`}
               onClick={() => setActiveChartTab('weekly')}

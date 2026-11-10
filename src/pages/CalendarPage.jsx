@@ -38,6 +38,12 @@ export default function CalendarPage({ go }) {
     return map;
   }, [data.subjects]);
 
+  const eventStyle = (color) => ({
+    backgroundColor: `color-mix(in srgb, ${color} 15%, var(--bs-tertiary-bg))`,
+    borderColor: `color-mix(in srgb, ${color} 25%, var(--bs-border-color))`,
+    color: 'var(--bs-body-color)',
+  });
+
   // Aggregate all calendar events with subject colors and types
   const eventsFor = useMemo(() => {
     const map = {};
@@ -55,7 +61,7 @@ export default function CalendarPage({ go }) {
           id: s.id,
           type: 'session',
           color,
-          bgStyle: { backgroundColor: color, color: '#fff' },
+          bgStyle: eventStyle(color),
           text: `${fmtTime(s.start, timeFormat)} ${s.title}`,
           detail: s,
           subject: sub,
@@ -68,8 +74,8 @@ export default function CalendarPage({ go }) {
       push(e.date, {
         id: e.id,
         type: 'exam',
-        color: '#dc2626',
-        bgStyle: { backgroundColor: '#dc2626', color: '#fff' },
+        color: '#a64c50',
+        bgStyle: eventStyle('#a64c50'),
         text: `Exam: ${e.name} (${e.type})`,
         detail: e,
         sort: '0a',
@@ -84,13 +90,13 @@ export default function CalendarPage({ go }) {
         const isAssignment = t.kind === 'assignment';
         const isMilestone = t.kind === 'milestone';
         const isProject = t.kind === 'project';
-        const color = isAssignment ? '#ea580c' : isMilestone ? '#7c3aed' : isProject ? '#0284c7' : '#059669';
+        const color = isAssignment ? '#9a6b22' : isMilestone ? '#657796' : isProject ? '#547a9f' : '#477a5e';
 
         push(t.deadline, {
           id: t.id,
           type: 'task',
           color,
-          bgStyle: { backgroundColor: color, color: '#fff' },
+          bgStyle: eventStyle(color),
           text: `${isAssignment ? 'Due' : isMilestone ? 'Milestone' : isProject ? 'Project' : 'Task'}: ${t.title}`,
           detail: t,
           subject: sub,
@@ -105,8 +111,8 @@ export default function CalendarPage({ go }) {
         list.unshift({
           id: h.id,
           type: 'holiday',
-          color: h.type === 'unavailable' ? '#64748b' : '#059669',
-          bgStyle: { backgroundColor: h.type === 'unavailable' ? '#64748b' : '#059669', color: '#fff' },
+          color: h.type === 'unavailable' ? '#64748b' : '#477a5e',
+          bgStyle: eventStyle(h.type === 'unavailable' ? '#64748b' : '#477a5e'),
           text: `${h.type === 'unavailable' ? 'Unavailable' : 'Holiday'}: ${h.title}`,
           detail: h,
           sort: '00',
@@ -351,22 +357,22 @@ export default function CalendarPage({ go }) {
           {/* Color Legend */}
           <div className="d-flex flex-wrap gap-2 small mt-3 p-2 bg-body-tertiary rounded">
             <span className="fw-semibold text-secondary me-1">Legend:</span>
-            <span className="badge" style={{ backgroundColor: '#0f766e', color: '#fff' }}>
+            <span className="badge subject-color-badge" style={{ '--subject-color': '#536f91' }}>
               Study Sessions (Colored by Subject)
             </span>
-            <span className="badge" style={{ backgroundColor: '#dc2626', color: '#fff' }}>
+            <span className="badge subject-color-badge" style={{ '--subject-color': '#a64c50' }}>
               Examinations
             </span>
-            <span className="badge" style={{ backgroundColor: '#ea580c', color: '#fff' }}>
+            <span className="badge subject-color-badge" style={{ '--subject-color': '#9a6b22' }}>
               Assignment Deadlines
             </span>
-            <span className="badge" style={{ backgroundColor: '#7c3aed', color: '#fff' }}>
+            <span className="badge subject-color-badge" style={{ '--subject-color': '#657796' }}>
               Milestones
             </span>
-            <span className="badge" style={{ backgroundColor: '#059669', color: '#fff' }}>
+            <span className="badge subject-color-badge" style={{ '--subject-color': '#477a5e' }}>
               Holidays
             </span>
-            <span className="badge" style={{ backgroundColor: '#64748b', color: '#fff' }}>
+            <span className="badge subject-color-badge" style={{ '--subject-color': '#64748b' }}>
               Unavailable Periods
             </span>
           </div>

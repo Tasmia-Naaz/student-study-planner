@@ -1,72 +1,71 @@
 # Student Study Planner
 
-A comprehensive, responsive, professional **Student Study Planner Web Application** built with React.js, Bootstrap 5, Chart.js, and Vite. Designed specifically for college students balancing regular college coursework, competitive exam preparations (such as GATE, TGPSC, UPSC, SSC, Banking, and Placement tests), assignments, multi-milestone projects, and personal commitments.
+A responsive study-planning app built with React, Vite, Bootstrap, and a Flask API. Students can organize subjects, schedules, exams, tasks, and progress. The app also supports mentor and admin workspaces for assignments, student progress, messaging, and notifications.
 
-The application features a **smart rule-based timetable generator** that schedules study sessions into students' actual free availability windows, automatically manages breaks (short, long, and meals), color-codes timetable sessions by subject, and tracks daily progress with LocalStorage persistence.
+## Features
 
----
+- Student dashboard with study statistics, charts, deadlines, and schedule highlights.
+- Subject and syllabus tracking with difficulty levels and subject colors.
+- Rule-based timetable generation based on availability, with study sessions and breaks.
+- Calendar, exams, assignments, study tasks, backlogs, and daily progress tracking.
+- Progress reports, light/dark themes, reminders, and JSON backup/import.
+- Role-based student, mentor, and admin areas, including mentor approval and assignments.
+- Student/mentor messaging and persisted notifications.
 
-## Key Features & Highlights
+Planner data is available locally in the browser. When signed in, student progress and portal data are synchronized with the Flask API. The backend uses SQLite by default; PostgreSQL can be configured for deployment.
 
-- **9 Main Navigation Pages:**
-  1. **Dashboard:** Comprehensive dynamic academic overview with 8+ statistics cards, 6 interactive Chart.js graphs, today's schedule with subject colors, upcoming exams countdown, upcoming assignment deadlines, and quick action buttons.
-  2. **My Subjects:** College & competitive exam subject management with subject codes, custom color picker palettes, difficulty levels (Easy, Medium, Hard), syllabus topic checklists, and completion percentage progress bars.
-  3. **Study Timetable:** Rule-based scheduling with **distinct subject color accents**, three category tabs (*College Study*, *Outside Exam Preparation*, *Combined Timetable*), Day/Week views, automated breaks (short, long, meals), manual session add/edit/reschedule, and availability constraint warnings.
-  4. **Exam Countdown:** Dynamic countdown timers for Semester, Internal, Practical, Viva, Competitive (GATE, TGPSC, UPSC), Entrance, and Placement examinations.
-  5. **Daily Progress:** Actual study hours tracking (hours & minutes selector), topic completion recording, daily goal progress percentage, rolling 30-day average, and subject-wise study time distribution.
-  6. **Task Management:** Unified tracker for Study Tasks, College Assignments (Written, Lab, Programming, Seminar) with color-coded deadline badges, and Academic Projects with nested Milestones and progress percentages.
-  7. **Calendar:** Month, Week, and Day calendar views displaying color-coded study sessions, exams, deadlines, milestones, and custom holiday/unavailable periods.
-  8. **Progress Reports:** Academic analytics across Weekly, Monthly, Previous Month, and Custom Date Ranges with daily study hours vs goal charts, doughnut subject breakdowns, task completion rates, and print-ready report layout.
-  9. **Settings:** Profile customization, Light/Dark appearance theme, timetable generator preference configuration, daily availability windows per weekday, recurring commitments (coaching, gym), in-app and browser notifications, JSON backup export/import, and a **1-Click Realistic Demo Data Loader**.
+## Requirements
 
----
+- Node.js 18 or newer and npm.
+- Python 3.10 or newer.
+- PostgreSQL only if you choose it instead of the default local SQLite database.
 
-## Technology Stack
+## Local development
 
-- **Frontend:** React 18 (ES6+ JavaScript), HTML5, CSS3
-- **UI & Layout:** Bootstrap 5.3, Bootstrap Icons, Custom Responsive CSS
-- **Charts & Visualizations:** Chart.js 4.4, react-chartjs-2
-- **Build System:** Vite 5
-- **Storage:** Browser LocalStorage (with JSON export/import for cross-device migration)
-- **Deployment:** Vercel, Render Static Site (zero backend or external API keys needed)
+### 1. Configure and run the API
 
----
+From the repository root, create a Python environment, install the backend requirements, and copy the example configuration:
 
-## Local Development & Setup
-
-### Prerequisites
-- Node.js LTS (v18 or newer)
-- npm (v9 or newer)
-
-Verify your Node.js installation:
-```bash
-node -v
-npm -v
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r backend\requirements.txt
+Copy-Item backend\.env.example backend\.env
 ```
 
-### Installation & Launch
-```bash
-# 1. Clone or navigate to the project directory
-cd student-study-planner
+The local API works with SQLite by default. To use PostgreSQL, set `DATABASE_URL` in `backend\.env`. Set unique random values for `FLASK_SECRET_KEY` and `JWT_SECRET_KEY`; do not commit `backend\.env` or put backend secrets in frontend variables.
 
-# 2. Install all dependencies
+Apply database migrations, optionally create an administrator, then start the API:
+
+```powershell
+flask --app backend.wsgi db upgrade
+flask --app backend.wsgi create-admin --email admin@example.edu
+python -m backend.app
+```
+
+The administrator command prompts for a name and a password of at least 12 characters. Mentor accounts require admin approval before sign-in.
+
+### 2. Run the frontend
+
+In a second terminal, from the repository root:
+
+```powershell
 npm install
-
-# 3. Start the local development server
 npm run dev
 ```
 
-Open your browser and navigate to the local URL (typically `http://localhost:5173`).
+Open the Vite URL shown in the terminal (usually `http://127.0.0.1:5173`). Vite proxies `/api` requests to `http://127.0.0.1:5000`. Set `VITE_API_TARGET` if the API runs at a different address.
 
----
+If you change database migrations after pulling updates, apply them with:
 
-## Production Build & Testing
+```powershell
+flask --app backend.wsgi db upgrade
+```
+
+## Build
 
 ```bash
-# Create an optimized production build
 npm run build
-
-# Preview the production build locally
 npm run preview
 ```
 The production bundle will be generated in the `dist/` directory.
@@ -110,7 +109,27 @@ All existing functionality (timetable generation, editing, deleting, LocalStorag
 
 ---
 
+## Project Folder Structure
 
+```text
+student-study-planner/
+│
+├── .gitignore                # New gitignore added
+├── public/
+├── src/
+│   ├── components/
+│   │   └── ...
+│   ├── pages/
+│   │   ├── Timetable.jsx     # Updated UI redesign
+│   │   └── ...
+│   ├── styles/
+│   │   └── app.css            # Updated styling for timetable
+│   └── ...
+├── index.html
+├── package.json
+├── vite.config.js
+├── vercel.json
+└── README.md                 # Updated documentation
 ```
 
 The timetable generator implements strict deterministic logic without machine learning:
@@ -191,4 +210,6 @@ student-study-planner/
 
 ---
 
+## License & Attribution
 
+Designed and developed as a complete college mini-project demonstration for academic study management and realistic timetable generation.

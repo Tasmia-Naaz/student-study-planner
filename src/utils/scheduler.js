@@ -90,11 +90,16 @@ function buildItems(data, track, startDate, useShare) {
   const mult = (t) => (useShare ? (t === 'exam' ? share / 50 : (100 - share) / 50) : 1);
 
   (data.subjects || []).forEach((sub, idx) => {
-    if (track !== 'both' && sub.category !== track) return;
+    const subTrack = sub.category === 'exam' ? 'exam' : 'college';
+    if (track !== 'both' && subTrack !== track) return;
     const ex = sub.examId ? exams[sub.examId] : null;
     const t = sub.topics || [];
     const done = t.filter((x) => x.done).length;
     const color = getSubjectColor(sub, idx);
+    const priority = PRI[sub.priority] || 2;
+    const preparationFactor = sub.isBacklog
+      ? Math.max(0.25, 1 - (Number(sub.progress) || 0) / 125)
+      : 1;
     items.push({
       key: 's:' + sub.id,
       subjectId: sub.id,
@@ -102,45 +107,59 @@ function buildItems(data, track, startDate, useShare) {
       color,
       taskId: '',
       title: sub.name,
-      track: sub.category || 'college',
+      track: subTrack,
       difficulty: sub.difficulty || 'Medium',
-      weight: (DIFF[sub.difficulty] || 2) * mult(sub.category || 'college'),
-      examDate: ex ? ex.date : null,
+      weight: (DIFF[sub.difficulty] || 2) * (1 + (priority - 2) * 0.3) * preparationFactor * mult(subTrack),
+      examDate: !sub.isBacklog && ex ? ex.date : null,
       examType: ex ? ex.type : null,
-      deadline: null,
+      deadline: sub.isBacklog ? (sub.deadline || ex?.date || null) : null,
       pending: t.filter((x) => !x.done).map((x) => x.name),
       allDone: t.length > 0 && done === t.length,
-      topicFactor: t.length ? Math.max(0.3, (t.length - done) / t.length) : 1,
+      topicFactor: (t.length ? Math.max(0.3, (t.length - done) / t.length) : 1)
+        * (sub.isBacklog && sub.status === 'Ready for Exam' ? 0.75 : 1),
       maxMin: null,
+      isBacklog: Boolean(sub.isBacklog),
+      isStudyTask: false,
     });
   });
 
   (data.tasks || []).forEach((task) => {
-    if (task.done || !task.deadline) return;
+    if (task.done || ['Completed', 'Submitted'].includes(task.status)) return;
     if (!['study', 'assignment', 'project', 'milestone'].includes(task.kind)) return;
-    if (task.kind === 'project' && (data.tasks || []).some((m) => m.kind === 'milestone' && m.parentId === task.id && !m.done)) return;
-    const sub = task.subjectId ? subjects[task.subjectId] : null;
-    const tTrack = (sub && sub.category) || 'college';
+    if (task.kind === 'project' && (data.tasks || []).some((m) => (
+      m.kind === 'milestone' &&
+      m.parentId === task.id &&
+      !m.done &&
+      !['Completed', 'Submitted'].includes(m.status)
+    ))) return;
+    const parentProject = task.kind === 'milestone'
+      ? (data.tasks || []).find((project) => project.id === task.parentId && project.kind === 'project')
+      : null;
+    const subjectId = task.subjectId || parentProject?.subjectId || '';
+    const sub = subjectId ? subjects[subjectId] : null;
+    const tTrack = sub?.category === 'exam' ? 'exam' : 'college';
     if (track !== 'both' && tTrack !== track) return;
     const color = sub ? getSubjectColor(sub) : '#0f766e';
+    const priority = Math.max(PRI[task.priority] || 2, PRI[parentProject?.priority] || 2);
     items.push({
       key: 't:' + task.id,
-      subjectId: task.subjectId || '',
+      subjectId,
       code: sub?.code || '',
       color,
       taskId: task.id,
       title: task.title,
       track: tTrack,
       difficulty: sub?.difficulty || 'Medium',
-      weight: (PRI[task.priority] || 2) * 1.5 * mult(tTrack),
+      weight: priority * 1.5 * mult(tTrack),
       examDate: null,
-      deadline: task.deadline,
+      deadline: task.deadline || parentProject?.deadline || null,
       pending: [],
       allDone: false,
       topicFactor: 1,
       maxMin: Math.round(num(task.estimate, 2, 0.25) * 60),
       isAssignment: task.kind === 'assignment',
       isProjectMilestone: task.kind === 'milestone' || task.kind === 'project',
+      isStudyTask: task.kind === 'study',
     });
   });
 
@@ -180,7 +199,13 @@ export function generateTimetable(data, { startDate, days, track }) {
 
   const dates = rangeDays(startDate, days);
   const inRange = new Set(dates);
-  const keep = (data.sessions || []).filter((x) => !inRange.has(x.date) || x.done || x.locked);
+  const keep = (data.sessions || []).filter((x) => {
+    // Preserve manually created (locked) or completed sessions.
+    if (x.done) return true;
+    if (x.locked) return true;
+    // Discard all other sessions (auto‑generated) so they will be regenerated.
+    return false;
+  });
   const items = buildItems(data, track, startDate, track === 'both');
   const warnings = [];
 
@@ -188,7 +213,7 @@ export function generateTimetable(data, { startDate, days, track }) {
     return {
       sessions: data.sessions || [],
       created: 0,
-      warnings: ['Add subjects, or tasks with deadlines, before generating a timetable.'],
+      warnings: ['Add subjects, backlog subjects, assignments, or projects before generating a timetable.'],
     };
   }
 
@@ -215,6 +240,7 @@ export function generateTimetable(data, { startDate, days, track }) {
     topic: '',
     label: '',
     track: '',
+    autoGenerated: true,
     ...extra,
   });
 
@@ -270,6 +296,8 @@ export function generateTimetable(data, { startDate, days, track }) {
         let label = 'Topic Study';
         if (best.isAssignment) label = 'Assignment Work';
         else if (best.isProjectMilestone) label = 'Project Work';
+        else if (best.isBacklog) label = 'Backlog Preparation';
+        else if (best.isStudyTask) label = 'Study Task';
         else if (best.allDone) label = 'Revision';
         else if (left !== null && left <= 5) label = 'Exam Revision';
         else if (best.track === 'exam') {

@@ -9,4 +9,4 @@ export function applyChartTheme(theme) {
   Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
 }
 
-export const PALETTE = ['#0f766e', '#f5b700', '#3b5bdb', '#d6336c', '#7048e8', '#e8590c', '#2b8a3e', '#1098ad', '#862e9c', '#868e96'];
+export const PALETTE = ['#536f91', '#7489a3', '#829a92', '#a28d7b', '#a17c83', '#8594ad', '#78917f', '#b09a70', '#718f9a', '#a28796'];
