@@ -2,6 +2,8 @@ import React, { useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "../context/AuthContext";
 import { departmentLabel } from "../utils/departments";
 import { PageHeader } from "../components/common";
+import { apiUrl } from "../utils/apiBase";
+import { csrfHeaders } from "../utils/api";
 
 export default function AdminDashboard() {
   const { user } = useContext(AuthContext);
@@ -16,8 +18,8 @@ export default function AdminDashboard() {
   useEffect(() => {
     let active = true;
     Promise.all([
-      fetch('/api/auth/admin/students', { credentials: 'include' }),
-      fetch('/api/auth/admin/mentors', { credentials: 'include' }),
+      fetch(apiUrl('/api/auth/admin/students'), { credentials: 'include' }),
+      fetch(apiUrl('/api/auth/admin/mentors'), { credentials: 'include' }),
     ])
       .then(async ([studentResponse, mentorResponse]) => {
         const [studentResult, mentorResult] = await Promise.all([studentResponse.json(), mentorResponse.json()]);
@@ -48,16 +50,10 @@ export default function AdminDashboard() {
     setActionError('');
     setApproving(mentorId);
     try {
-      const csrf = document.cookie
-        .split('; ')
-        .find((cookie) => cookie.startsWith('csrf_access_token='))
-        ?.split('=')
-        .slice(1)
-        .join('=');
-      const response = await fetch(`/api/auth/admin/mentors/${mentorId}/approve`, {
+      const response = await fetch(apiUrl(`/api/auth/admin/mentors/${mentorId}/approve`), {
         method: 'POST',
         credentials: 'include',
-        headers: csrf ? { 'X-CSRF-TOKEN': decodeURIComponent(csrf) } : {},
+        headers: csrfHeaders('POST'),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Could not approve mentor.');

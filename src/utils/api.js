@@ -1,23 +1,40 @@
-const inFlightGetRequests = new Map();
+import { apiUrl } from './apiBase';
 
-export async function apiRequest(path, options = {}) {
-  const method = options.method || 'GET';
-  const csrf = document.cookie
+const inFlightGetRequests = new Map();
+let sessionCsrfToken = null;
+
+export function setCsrfToken(token) {
+  sessionCsrfToken = token || null;
+}
+
+export function getCsrfToken() {
+  if (sessionCsrfToken) return sessionCsrfToken;
+  return document.cookie
     .split('; ')
     .find((cookie) => cookie.startsWith('csrf_access_token='))
     ?.split('=')
     .slice(1)
-    .join('=');
+    .join('=') || null;
+}
+
+export function csrfHeaders(method) {
+  const csrf = getCsrfToken();
+  return method !== 'GET' && csrf ? { 'X-CSRF-TOKEN': decodeURIComponent(csrf) } : {};
+}
+
+export async function apiRequest(path, options = {}) {
+  const method = options.method || 'GET';
+  const csrf = getCsrfToken();
   const requestKey = method === 'GET' ? `${csrf || 'anonymous'}:${path}` : null;
   if (requestKey && inFlightGetRequests.has(requestKey)) return inFlightGetRequests.get(requestKey);
 
   const request = (async () => {
-    const response = await fetch(`/api/portal${path}`, {
+    const response = await fetch(apiUrl(`/api/portal${path}`), {
       credentials: 'include',
       ...options,
       headers: {
         ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(method !== 'GET' && csrf ? { 'X-CSRF-TOKEN': decodeURIComponent(csrf) } : {}),
+        ...csrfHeaders(method),
         ...options.headers,
       },
     });

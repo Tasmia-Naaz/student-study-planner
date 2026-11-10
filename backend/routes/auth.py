@@ -225,9 +225,10 @@ def me():
 @jwt_required(optional=True)
 def session():
     user = get_current_user()
+    csrf_token = request.cookies.get("csrf_access_token")
     if not user or not user.is_active or (user.role == RoleEnum.MENTOR and not user.mentor_approved):
-        return jsonify({"user": None}), 200
-    return jsonify({"user": serialize_user(user)}), 200
+        return jsonify({"user": None, "csrf_token": csrf_token}), 200
+    return jsonify({"user": serialize_user(user), "csrf_token": csrf_token}), 200
 
 @bp.route('/me', methods=['PUT'])
 @jwt_required()

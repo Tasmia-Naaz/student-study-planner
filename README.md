@@ -91,7 +91,28 @@ The production bundle will be generated in the `dist/` directory.
 4. Configure:
    - **Build Command:** `npm install && npm run build`
    - **Publish Directory:** `dist`
+   - **Environment Variable:** `VITE_API_BASE_URL=https://student-study-plannery.onrender.com`
 5. Click **Create Static Site**.
+
+### 3. Render Deployment (Flask API)
+Configure the existing Flask web service with:
+
+- **Root Directory:** repository root
+- **Build Command:** `pip install -r backend/requirements.txt`
+- **Start Command:** `gunicorn backend.wsgi:app`
+
+Set these environment variables on the Flask service:
+
+```text
+FLASK_DEBUG=0
+FLASK_SECRET_KEY=<a unique, randomly generated secret>
+JWT_SECRET_KEY=<a different unique, randomly generated secret>
+JWT_COOKIE_SECURE=1
+CORS_ORIGINS=https://student-study-planner-opxe.onrender.com
+DATABASE_URL=<the existing production database connection string>
+```
+
+Keep the database URL and signing keys only on the backend service. The production JWT cookies use `SameSite=None; Secure`; local debug mode keeps `SameSite=Lax` for the Vite proxy. The frontend API base URL is trimmed of trailing slashes, and when it is unset locally, requests remain relative so Vite's `/api` proxy continues to work.
 
 ---
 

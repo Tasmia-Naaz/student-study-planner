@@ -3,7 +3,8 @@ import { useStore } from './hooks/useStore';
 import { getReminders } from './utils/notifications';
 import { fmtDate, toMin } from './utils/dates';
 import { AuthContext } from './context/AuthContext';
-import { apiRequest } from './utils/api';
+import { apiRequest, csrfHeaders, setCsrfToken } from './utils/api';
+import { apiUrl } from './utils/apiBase';
 import { defaultData } from './utils/defaults';
 
 const lazyPage = (load) => lazy(() => load().then(({ default: Page }) => ({ default: memo(Page) })));
@@ -281,8 +282,13 @@ export default function App() {
   const logout = async () => {
     setLogoutError('');
     try {
-      const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+      const response = await fetch(apiUrl('/api/auth/logout'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: csrfHeaders('POST'),
+      });
       if (!response.ok) throw new Error('The server could not end the session. Please try again.');
+      setCsrfToken(null);
       setUser(null);
       startTransition(() => setPage('dashboard'));
     } catch (error) {

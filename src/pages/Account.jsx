@@ -2,13 +2,15 @@ import { startTransition, useContext, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Field, PageHeader } from '../components/common';
 import { DEPARTMENTS } from '../utils/departments';
+import { apiUrl } from '../utils/apiBase';
+import { setCsrfToken } from '../utils/api';
 
 const API = '/api/auth';
 
 async function request(path, options = {}) {
   let response;
   try {
-    response = await fetch(`${API}${path}`, {
+    response = await fetch(apiUrl(`${API}${path}`), {
       credentials: 'include',
       ...options,
       headers: { 'Content-Type': 'application/json', ...options.headers },
@@ -97,6 +99,8 @@ export default function Account({ onAuthenticated, authError }) {
         method: 'POST',
         body: JSON.stringify({ email: form.email, password: form.password, role }),
       });
+      const session = await request('/session');
+      setCsrfToken(session.csrf_token);
       const profile = await request('/me');
       startTransition(() => {
         setUser(profile);

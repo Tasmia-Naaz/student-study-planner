@@ -18,7 +18,11 @@ def create_app():
     db.init_app(app)
     migrate.init_app(app, db)
     jwt.init_app(app)
-    cors.init_app(app)
+    cors.init_app(
+        app,
+        origins=app.config["CORS_ORIGINS"],
+        supports_credentials=True,
+    )
 
     # Register blueprints
     app.register_blueprint(auth.bp, url_prefix='/api/auth')

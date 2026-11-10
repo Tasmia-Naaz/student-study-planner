@@ -2,21 +2,17 @@ import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { Field } from '../components/common';
 import { DEPARTMENTS } from '../utils/departments';
+import { apiUrl } from '../utils/apiBase';
+import { csrfHeaders } from '../utils/api';
 
 async function request(path, options) {
   const method = options.method || 'GET';
-  const csrf = document.cookie
-    .split('; ')
-    .find((cookie) => cookie.startsWith('csrf_access_token='))
-    ?.split('=')
-    .slice(1)
-    .join('=');
-  const response = await fetch(`/api/auth${path}`, {
+  const response = await fetch(apiUrl(`/api/auth${path}`), {
     credentials: 'include',
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...(method !== 'GET' && csrf ? { 'X-CSRF-TOKEN': decodeURIComponent(csrf) } : {}),
+      ...csrfHeaders(method),
       ...options.headers,
     },
   });

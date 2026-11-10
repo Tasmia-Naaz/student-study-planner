@@ -1,11 +1,13 @@
 import React, { createContext, useEffect, useRef, useState } from "react";
+import { apiUrl } from "../utils/apiBase";
+import { csrfHeaders, setCsrfToken } from "../utils/api";
 
 let sessionRequest;
 
 function restoreSession() {
   if (!sessionRequest) {
     sessionRequest = (async () => {
-      const response = await fetch('/api/auth/session', { credentials: 'include' });
+      const response = await fetch(apiUrl('/api/auth/session'), { credentials: 'include' });
       const contentType = response.headers.get('content-type') || '';
       if (!contentType.includes('application/json')) {
         if (response.status === 500 && contentType.startsWith('text/plain')) {
@@ -14,19 +16,15 @@ function restoreSession() {
         throw new Error(`The API returned HTTP ${response.status} without a JSON response.`);
       }
       const result = await response.json();
+      setCsrfToken(result.csrf_token);
       if (response.status === 401 || response.status === 422) {
-        const csrf = document.cookie
-          .split('; ')
-          .find((cookie) => cookie.startsWith('csrf_access_token='))
-          ?.split('=')
-          .slice(1)
-          .join('=');
-        const clearResponse = await fetch('/api/auth/logout', {
+        const clearResponse = await fetch(apiUrl('/api/auth/logout'), {
           method: 'POST',
           credentials: 'include',
-          headers: csrf ? { 'X-CSRF-TOKEN': decodeURIComponent(csrf) } : {},
+          headers: csrfHeaders('POST'),
         });
         if (!clearResponse.ok) throw new Error('Could not clear the expired session. Please refresh and try again.');
+        setCsrfToken(null);
         return null;
       }
       if (!response.ok) throw new Error(result.error || 'Could not restore your session.');

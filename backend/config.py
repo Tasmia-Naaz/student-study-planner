@@ -39,10 +39,21 @@ class Config:
     JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY") or secrets.token_hex(32)
     JWT_TOKEN_LOCATION = ["cookies"]
     JWT_COOKIE_SECURE = os.getenv("JWT_COOKIE_SECURE", "0" if DEBUG else "1") == "1"
-    JWT_COOKIE_SAMESITE = "Lax"
+    JWT_COOKIE_SAMESITE = "Lax" if DEBUG else "None"
     JWT_ACCESS_COOKIE_PATH = '/'  # cookie valid for entire site
     JWT_REFRESH_COOKIE_PATH = '/'  # optional
     JWT_COOKIE_CSRF_PROTECT = True
 
     # CORS settings
-    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*")
+    default_cors_origins = (
+        "http://localhost:5173,"
+        "http://127.0.0.1:5173,"
+        "https://student-study-planner-opxe.onrender.com"
+    )
+    CORS_ORIGINS = [
+        origin.strip().rstrip("/")
+        for origin in os.getenv("CORS_ORIGINS", default_cors_origins).split(",")
+        if origin.strip()
+    ]
+    if "*" in CORS_ORIGINS:
+        raise RuntimeError("CORS_ORIGINS must list explicit origins; wildcard origins are not supported.")
