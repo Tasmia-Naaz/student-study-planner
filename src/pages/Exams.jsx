@@ -207,20 +207,20 @@ export default function Exams() {
               >
                 <div className="card-body d-flex flex-column">
                   {/* Header info */}
-                  <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
-                    <div className="min-w-0">
+                  <div className="exam-card-header mb-2">
+                    <div className="exam-card-details">
                       <div className="d-flex align-items-center gap-1 flex-wrap mb-1">
                         <span className="badge text-bg-secondary">{e.type}</span>
                         {e.category && <span className="badge text-bg-light border">{e.category}</span>}
                       </div>
-                      <h5 className="card-title fw-bold text-truncate mb-0" title={e.name}>
+                      <h5 className="card-title exam-card-title fw-bold mb-0" title={e.name}>
                         {e.name}
                       </h5>
                     </div>
 
-                    <div className="btn-group btn-group-sm flex-shrink-0">
+                    <div className="exam-card-actions">
                       <button
-                        className="btn btn-outline-secondary"
+                        className="btn btn-sm btn-outline-secondary"
                         onClick={() => setForm({ ...e })}
                         title="Edit Examination"
                         aria-label="Edit Examination"
@@ -228,7 +228,7 @@ export default function Exams() {
                         <i className="bi bi-pencil" />
                       </button>
                       <button
-                        className="btn btn-outline-danger"
+                        className="btn btn-sm btn-outline-danger"
                         onClick={() => setDeleteTarget(e)}
                         title="Delete Examination"
                         aria-label="Delete Examination"

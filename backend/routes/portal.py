@@ -15,6 +15,7 @@ from ..models import (
     MentorFeedback,
     Message,
     Notification,
+    PermanentMentorAssignment,
     RoleEnum,
     StudentProgress,
     User,
@@ -51,8 +52,6 @@ def role_required(*roles):
                 return jsonify({"error": "You do not have permission to access this resource"}), 403
             if not user.is_active:
                 return jsonify({"error": "This account is currently inactive"}), 403
-            if user.role == RoleEnum.MENTOR and not user.mentor_approved:
-                return jsonify({"error": "Mentor account approval is required"}), 403
             return handler(*args, **kwargs)
         return guarded
     return decorate
@@ -68,10 +67,6 @@ def active_assignment(student_id):
 
 def is_current_pair(first, second):
     if not first.is_active or not second.is_active:
-        return False
-    if first.role == RoleEnum.MENTOR and (not first.mentor_approved or not first.is_active):
-        return False
-    if second.role == RoleEnum.MENTOR and (not second.mentor_approved or not second.is_active):
         return False
     assignment = MentorAssignment.query.filter_by(student_id=second.id, mentor_id=first.id, active=True).first()
     if first.role == RoleEnum.STUDENT:
@@ -204,7 +199,7 @@ def student_json(student, progress_data=None, backlog_counts=None):
 @role_required("admin")
 def list_assignments():
     students = User.query.filter_by(role=RoleEnum.STUDENT).order_by(User.full_name).all()
-    mentors = User.query.filter_by(role=RoleEnum.MENTOR, mentor_approved=True, is_active=True).order_by(User.full_name).all()
+    mentors = User.query.filter_by(role=RoleEnum.MENTOR, is_active=True).order_by(User.full_name).all()
     history = (
         db.session.query(MentorAssignment, User.full_name)
         .join(User, User.id == MentorAssignment.mentor_id)
@@ -213,6 +208,7 @@ def list_assignments():
     )
     assignments = [(item, mentor_name) for item, mentor_name in history if item.active]
     current_mentor_names = {item.student_id: mentor_name for item, mentor_name in assignments}
+    actively_assigned_student_ids = set(current_mentor_names)
     student_names = {student.id: student.full_name for student in students}
     return jsonify({
         "students": [
@@ -225,6 +221,7 @@ def list_assignments():
                 "academic_year": student.academic_year,
                 "semester": student.semester,
                 "current_mentor": current_mentor_names.get(student.id),
+                "assignment_locked": student.id in actively_assigned_student_ids,
             }
             for student in students
         ],
@@ -260,9 +257,9 @@ def assign_students():
         student_ids = list(dict.fromkeys(int(student_id) for student_id in student_ids))
     except (TypeError, ValueError):
         return jsonify({"error": "Mentor and student IDs must be valid"}), 400
-    mentor = User.query.filter_by(id=mentor_id, role=RoleEnum.MENTOR, mentor_approved=True, is_active=True).first()
+    mentor = User.query.filter_by(id=mentor_id, role=RoleEnum.MENTOR, is_active=True).first()
     if not mentor:
-        return jsonify({"error": "Only approved mentors can receive assignments"}), 400
+        return jsonify({"error": "Select an active mentor"}), 400
     students = (
         User.query.filter(
             User.id.in_(student_ids),
@@ -275,40 +272,47 @@ def assign_students():
     )
     if len(students) != len(student_ids):
         return jsonify({"error": "One or more selected students do not exist or are inactive"}), 404
-    active_by_student = {
-        assignment.student_id: assignment
-        for assignment in MentorAssignment.query.filter(
-            MentorAssignment.student_id.in_(student_ids),
-            MentorAssignment.active.is_(True),
+    active_assignments = MentorAssignment.query.filter(
+        MentorAssignment.student_id.in_(student_ids),
+        MentorAssignment.active.is_(True),
+    ).all()
+    if active_assignments:
+        return jsonify({"error": "Students with an active mentor assignment cannot be reassigned"}), 409
+
+    existing_claims = {
+        claim.student_id: claim
+        for claim in PermanentMentorAssignment.query.filter(
+        PermanentMentorAssignment.student_id.in_(student_ids)
         ).all()
     }
-    previous_mentor_ids = {item.mentor_id for item in active_by_student.values()} - {mentor.id}
-    previous_mentors = {
-        previous.id: previous
-        for previous in User.query.filter(User.id.in_(previous_mentor_ids)).all()
-    } if previous_mentor_ids else {}
+
     admins = User.query.filter_by(role=RoleEnum.ADMIN).all()
     try:
         with db.session.begin_nested():
             for student in students:
-                old = active_by_student.get(student.id)
-                if old and old.mentor_id == mentor.id:
-                    continue
-                if old:
-                    previous_mentor = previous_mentors.get(old.mentor_id)
-                    old.active = False
-                    old.ended_at = datetime.utcnow()
-                    if previous_mentor:
-                        notify(previous_mentor.id, "Mentee reassigned", f"{student.full_name} is no longer assigned to you.", "assignment")
-                db.session.add(MentorAssignment(mentor_id=mentor.id, student_id=student.id))
-                notify(student.id, "Mentor assignment updated", f"{mentor.full_name} is now your assigned mentor.", "assignment")
+                assignment = MentorAssignment(mentor_id=mentor.id, student_id=student.id)
+                db.session.add(assignment)
+                db.session.flush()
+                claim = existing_claims.get(student.id)
+                if claim:
+                    claim.mentor_id = mentor.id
+                    claim.assignment_id = assignment.id
+                    claim.assigned_at = assignment.assigned_at
+                else:
+                    db.session.add(PermanentMentorAssignment(
+                        student_id=student.id,
+                        mentor_id=mentor.id,
+                        assignment_id=assignment.id,
+                        assigned_at=assignment.assigned_at,
+                    ))
+                notify(student.id, "Mentor assigned", f"{mentor.full_name} is your permanently assigned mentor.", "assignment")
                 notify(mentor.id, "New mentee assigned", f"{student.full_name} was assigned to you.", "assignment")
                 for admin in admins:
                     notify(admin.id, "Mentor assignment updated", f"{student.full_name} was assigned to {mentor.full_name}.", "assignment")
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
-        return jsonify({"error": "A student already has an active mentor assignment"}), 409
+        return jsonify({"error": "Students with an active mentor assignment cannot be reassigned"}), 409
     return jsonify({"msg": "Assignments saved"}), 200
 
 
@@ -316,21 +320,7 @@ def assign_students():
 @jwt_required()
 @role_required("admin")
 def remove_assignment(student_id):
-    assignment = active_assignment(student_id)
-    if not assignment:
-        return jsonify({"error": "Student has no active mentor assignment"}), 404
-    student = db.session.get(User, student_id)
-    mentor = db.session.get(User, assignment.mentor_id)
-    assignment.active = False
-    assignment.ended_at = datetime.utcnow()
-    if student:
-        notify(student.id, "Mentor assignment removed", "Your mentor assignment was removed by an administrator.", "assignment")
-    if mentor and student:
-        notify(mentor.id, "Mentee reassigned", f"{student.full_name} is no longer assigned to you.", "assignment")
-        for admin in User.query.filter_by(role=RoleEnum.ADMIN).all():
-            notify(admin.id, "Mentor assignment removed", f"{student.full_name} was removed from {mentor.full_name}.", "assignment")
-    db.session.commit()
-    return jsonify({"msg": "Assignment removed"}), 200
+    return jsonify({"error": "Mentor assignments are permanent and cannot be removed"}), 409
 
 
 @bp.route("/mentor/students", methods=["GET"])
@@ -551,8 +541,6 @@ def messages():
     user = current_user()
     if not user or user.role == RoleEnum.ADMIN:
         return jsonify({"error": "Messaging is available to students and mentors"}), 403
-    if user.role == RoleEnum.MENTOR and not user.mentor_approved:
-        return jsonify({"error": "Mentor account approval is required"}), 403
     if request.method == "GET":
         try:
             other_id = int(request.args.get("with_user", ""))

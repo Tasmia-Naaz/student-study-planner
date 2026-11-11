@@ -45,7 +45,7 @@ def register_student():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error": "A JSON object is required"}), 400
-    required = ["full_name", "student_id", "email", "password", "department", "academic_year", "semester"]
+    required = ["full_name", "student_id", "password", "department", "academic_year", "semester"]
     missing = [f for f in required if f not in data]
     if missing:
         return jsonify({"error": f"Missing fields: {', '.join(missing)}"}), 400
@@ -66,13 +66,13 @@ def register_student():
     if not STUDENT_ID_REGEX.fullmatch(student_id):
         return jsonify({"error": "Invalid student_id format. Expected 2451-XX-XXX-XXX"}), 400
 
-    email = str(data["email"]).strip()
+    email = f"{student_id.replace('-', '')}@mvsrec.edu.in"
     full_name = str(data["full_name"]).strip()
     password = data["password"]
     academic_year = str(data["academic_year"]).strip()
     semester = str(data["semester"]).strip()
     phone = str(data.get("phone") or "").strip()
-    if not email or not EMAIL_REGEX.fullmatch(email) or not full_name or len(full_name) > 120 or len(email) > 120:
+    if not EMAIL_REGEX.fullmatch(email) or not full_name or len(full_name) > 120:
         return jsonify({"error": "A valid name and email are required"}), 400
     if not isinstance(password, str):
         return jsonify({"error": "Password must be text"}), 400
@@ -140,7 +140,6 @@ def register_mentor():
     if User.query.filter_by(employee_id=employee_id).first():
         return jsonify({"error": "Employee ID already registered"}), 409
 
-    # Mentor accounts are created with role MENTOR but marked inactive until admin approval.
     user = User(
         role=RoleEnum.MENTOR,
         full_name=full_name,
@@ -149,18 +148,11 @@ def register_mentor():
         employee_id=employee_id,
         department=department,
         phone=phone,
-        mentor_approved=False,
+        mentor_approved=True,
     )
     db.session.add(user)
-    for admin in User.query.filter_by(role=RoleEnum.ADMIN).all():
-        db.session.add(Notification(
-            user_id=admin.id,
-            title="Mentor approval required",
-            body=f"{full_name} registered as a mentor and is awaiting approval.",
-            kind="registration",
-        ))
     db.session.commit()
-    return jsonify({"msg": "Mentor registered successfully. Await admin approval."}), 201
+    return jsonify({"msg": "Mentor registered successfully. You can now sign in."}), 201
 
 @bp.route('/login', methods=['POST'])
 def login():
@@ -180,9 +172,6 @@ def login():
         return jsonify({"error": f"This account is not registered as {requested_role}"}), 403
     if not user.is_active:
         return jsonify({"error": "This account is currently inactive"}), 403
-    if user.role == RoleEnum.MENTOR and not user.mentor_approved:
-        return jsonify({"error": "Your mentor account is awaiting Admin approval"}), 403
-
     # Create JWT token with identity = user.id
     access_token = create_access_token(identity=str(user.id))
     resp = jsonify({"msg": "Login successful", "role": user.role.value, "user_id": user.id})
@@ -199,8 +188,8 @@ def me():
         user = None
     if not user:
         return jsonify({"error": "User not found"}), 404
-    if not user.is_active or (user.role == RoleEnum.MENTOR and not user.mentor_approved):
-        return jsonify({"error": "Your mentor account is awaiting Admin approval"}), 403
+    if not user.is_active:
+        return jsonify({"error": "This account is currently inactive"}), 403
     # Return minimal profile info
     profile = {
         "id": user.id,
@@ -209,7 +198,6 @@ def me():
         "role": user.role.value,
         "department": user.department,
         "phone": user.phone,
-        "mentor_approved": user.mentor_approved if user.role == RoleEnum.MENTOR else None,
     }
     if user.role == RoleEnum.STUDENT:
         profile.update({
@@ -226,7 +214,7 @@ def me():
 def session():
     user = get_current_user()
     csrf_token = request.cookies.get("csrf_access_token")
-    if not user or not user.is_active or (user.role == RoleEnum.MENTOR and not user.mentor_approved):
+    if not user or not user.is_active:
         return jsonify({"user": None, "csrf_token": csrf_token}), 200
     return jsonify({"user": serialize_user(user), "csrf_token": csrf_token}), 200
 
@@ -365,24 +353,10 @@ def admin_mentors():
             "email": mentor.email,
             "employee_id": mentor.employee_id,
             "department": mentor.department,
-            "approved": mentor.mentor_approved,
             "active": mentor.is_active,
         }
         for mentor in mentors
     ]), 200
-
-@bp.route('/admin/mentors/<int:mentor_id>/approve', methods=['POST'])
-@jwt_required()
-def approve_mentor(mentor_id):
-    admin = get_current_user()
-    if not admin or admin.role != RoleEnum.ADMIN:
-        return jsonify({"error": "Admin access required"}), 403
-    mentor = User.query.filter_by(id=mentor_id, role=RoleEnum.MENTOR).first()
-    if not mentor:
-        return jsonify({"error": "Mentor not found"}), 404
-    mentor.mentor_approved = True
-    db.session.commit()
-    return jsonify({"msg": "Mentor approved successfully"}), 200
 
 @bp.route('/mentor/students', methods=['GET'])
 @jwt_required()
@@ -394,8 +368,8 @@ def mentor_students():
         user = None
     if not user or user.role != RoleEnum.MENTOR:
         return jsonify({"error": "Mentor access required"}), 403
-    if not user.mentor_approved or not user.is_active:
-        return jsonify({"error": "Mentor account is awaiting Admin approval"}), 403
+    if not user.is_active:
+        return jsonify({"error": "This account is currently inactive"}), 403
 
     students = (
         User.query.join(MentorAssignment, MentorAssignment.student_id == User.id)
@@ -451,6 +425,5 @@ def serialize_user(user):
     elif user.role == RoleEnum.MENTOR:
         profile.update({
             "employee_id": user.employee_id,
-            "mentor_approved": user.mentor_approved,
         })
     return profile

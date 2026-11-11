@@ -1812,3 +1812,281 @@ body {
     transition: none;
   }
 }
+
+/* My Subjects cards */
+.subject-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #dbe3ef !important;
+  border-left: 4px solid #94a3b8 !important;
+  border-radius: 12px !important;
+  background-color: var(--subject-card-background) !important;
+  box-shadow: 0 2px 8px rgba(23, 37, 84, 0.06) !important;
+}
+
+.subject-card:hover {
+  box-shadow: 0 6px 16px rgba(23, 37, 84, 0.1) !important;
+}
+
+.subject-card .card-body {
+  min-width: 0;
+  padding: 1.15rem;
+}
+
+.subject-card-topline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.subject-card-badges {
+  min-width: 0;
+}
+
+.subject-card .subject-meta-badge {
+  background: #f1f5f9;
+  border: 1px solid #dbe3ef;
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: normal;
+}
+
+.subject-card-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.1rem;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.subject-card-actions .subject-action-button {
+  display: inline-grid;
+  width: 2.15rem;
+  height: 2.15rem;
+  flex: 0 0 2.15rem;
+  place-items: center;
+  padding: 0;
+  border-radius: 7px;
+}
+
+.subject-card-title {
+  min-width: 0;
+  min-height: 2.7em;
+  color: #172554;
+  font-size: 1.08rem;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.subject-supporting-text {
+  color: #334155 !important;
+  overflow-wrap: anywhere;
+}
+
+.subject-exam-link {
+  min-height: 1.5em;
+}
+
+.exam-card-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.exam-card-details {
+  min-width: 0;
+}
+
+.exam-card-title {
+  overflow-wrap: anywhere;
+}
+
+.exam-card-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.exam-card-actions .btn {
+  display: inline-grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 2.25rem;
+  place-items: center;
+  padding: 0;
+}
+
+.subject-description {
+  display: -webkit-box;
+  min-height: 3em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-height: 1.5;
+}
+
+.subject-card .progress {
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  background: #dce8e7 !important;
+}
+
+.subject-card .progress-bar {
+  background: #0f766e !important;
+}
+
+.subject-scheduling-weight {
+  text-align: right;
+}
+
+@media (max-width: 575.98px) {
+  .subject-card .card-body {
+    padding: 1rem;
+  }
+
+  .exam-card-header {
+    gap: 0.5rem;
+  }
+
+  .exam-card-actions {
+    gap: 0.3rem;
+  }
+
+  .exam-card-actions .btn {
+    width: 2.1rem;
+    height: 2.1rem;
+    flex-basis: 2.1rem;
+  }
+
+  .subject-card-topline {
+    gap: 0.5rem;
+  }
+
+  .subject-card-actions {
+    gap: 0.2rem;
+  }
+
+  .subject-card-actions .subject-action-button {
+    width: 2rem;
+    height: 2rem;
+    flex-basis: 2rem;
+  }
+}
+
+/* Keep timetable and calendar text legible on pastel event surfaces. */
+.timetable-item.study-item {
+  color: #172554;
+}
+
+.timetable-item.study-item .session-time-text,
+.timetable-item.study-item .session-subject-title,
+.timetable-item.study-item .session-topic-box {
+  color: #172554;
+}
+
+.timetable-item.study-item .session-subject-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.timetable-item.study-item .session-time-text {
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.timetable-item.study-item .session-duration-pill {
+  color: #1f2937;
+}
+
+.timetable-item.is-done {
+  opacity: 1;
+}
+
+.cal-chip,
+.calendar-event-card {
+  color: #172554 !important;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.cal-chip {
+  white-space: normal;
+  text-overflow: clip;
+  padding: 0.2rem 0.3rem;
+  font-size: clamp(0.65rem, 0.78vw, 0.76rem);
+}
+
+.cal-grid .cal-chip {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+}
+
+.cal-chip:hover,
+.calendar-event-card:hover {
+  color: #172554 !important;
+  filter: brightness(0.97);
+}
+
+.calendar-event-title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.calendar-session-row {
+  min-width: 0;
+  align-items: flex-start !important;
+}
+
+.calendar-session-time {
+  flex: 0 0 auto;
+  color: #1f2937 !important;
+  font-weight: 600;
+}
+
+.calendar-session-title {
+  min-width: 0;
+  color: #172554;
+  font-weight: 600;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.calendar-session-row .badge {
+  flex: 0 0 auto;
+  color: #1f2937 !important;
+  background-color: #f1f5f9 !important;
+}
+
+.session-card.session-done {
+  opacity: 1;
+}
+
+@media (max-width: 575.98px) {
+  .timetable-item.study-item {
+    padding: 0.85rem;
+  }
+
+  .timetable-item.study-item .session-subject-title {
+    font-size: 1rem;
+  }
+
+  .cal-chip {
+    font-size: 0.65rem;
+  }
+}

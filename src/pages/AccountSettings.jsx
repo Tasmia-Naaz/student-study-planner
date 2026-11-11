@@ -159,11 +159,6 @@ export default function AccountSettings() {
                   <Field label="Employee ID" className="col-12 col-md-6">
                     <input className="form-control" readOnly value={user.employee_id || ''} />
                   </Field>
-                  <div className="col-12">
-                    <span className={`badge ${user.mentor_approved ? 'text-bg-success' : 'text-bg-warning'}`}>
-                      {user.mentor_approved ? 'Approved' : 'Awaiting Admin approval'}
-                    </span>
-                  </div>
                 </>
               )}
             </div>

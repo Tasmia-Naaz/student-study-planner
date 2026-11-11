@@ -43,6 +43,7 @@ const ROLE_LABELS = {
   mentor: 'Mentor',
   admin: 'Admin',
 };
+const STUDENT_ID_REGEX = /^2451-\d{2}-\d{3}-\d{3}$/;
 
 export default function Account({ onAuthenticated, authError }) {
   const { setUser } = useContext(AuthContext);
@@ -86,9 +87,7 @@ export default function Account({ onAuthenticated, authError }) {
         setBusy(false);
         setMessage({
           type: 'success',
-          text: role === 'mentor'
-            ? 'Registration received. An admin must approve your account before you can sign in.'
-            : 'Registration successful. Sign in with your new student account.',
+          text: `Registration successful. Sign in with your new ${role} account.`,
         });
         setMode('login');
         setForm({ email: form.email || '' });
@@ -115,6 +114,9 @@ export default function Account({ onAuthenticated, authError }) {
   const registerStudent = role === 'student' && mode === 'register';
   const registerMentor = role === 'mentor' && mode === 'register';
   const registering = registerStudent || registerMentor;
+  const studentEmail = registerStudent && STUDENT_ID_REGEX.test(form.student_id || '')
+    ? `${form.student_id.replace(/-/g, '')}@mvsrec.edu.in`
+    : '';
 
   return (
     <div className="public-auth min-vh-100 d-flex align-items-center py-4">
@@ -149,9 +151,7 @@ export default function Account({ onAuthenticated, authError }) {
                 <h2 className="h4 mb-1">{registering ? `${ROLE_LABELS[role]} registration` : `${ROLE_LABELS[role]} login`}</h2>
                 <p className="text-secondary mb-0">
                   {role === 'admin'
-                    ? 'Admin accounts are created securely by the system administrator.'
-                    : role === 'mentor' && registering
-                      ? 'Mentor accounts require Admin approval before dashboard access.'
+                      ? 'Admin accounts are created securely by the system administrator.'
                       : 'Use your registered account details to continue.'}
                 </p>
               </div>
@@ -193,7 +193,7 @@ export default function Account({ onAuthenticated, authError }) {
                       </>
                     )}
                     <Field label="Email" className="col-12 col-md-6">
-                      <input type="email" className="form-control" autoComplete="email" required maxLength={120} value={form.email || ''} onChange={(e) => change('email', e.target.value)} />
+                      <input type="email" className="form-control" autoComplete="email" required maxLength={120} readOnly={registerStudent} value={registerStudent ? studentEmail : form.email || ''} onChange={registerStudent ? undefined : (e) => change('email', e.target.value)} />
                     </Field>
                     {registering && (
                       <Field label="Phone number" className="col-12 col-md-6">

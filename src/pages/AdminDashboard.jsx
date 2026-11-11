@@ -3,7 +3,6 @@ import { AuthContext } from "../context/AuthContext";
 import { departmentLabel } from "../utils/departments";
 import { PageHeader } from "../components/common";
 import { apiUrl } from "../utils/apiBase";
-import { csrfHeaders } from "../utils/api";
 
 export default function AdminDashboard() {
   const { user } = useContext(AuthContext);
@@ -11,8 +10,6 @@ export default function AdminDashboard() {
   const [mentors, setMentors] = useState([]);
   const [department, setDepartment] = useState('');
   const [error, setError] = useState('');
-  const [actionError, setActionError] = useState('');
-  const [approving, setApproving] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,31 +43,9 @@ export default function AdminDashboard() {
     ? students.filter((student) => student.department === department)
     : students;
 
-  const approveMentor = async (mentorId) => {
-    setActionError('');
-    setApproving(mentorId);
-    try {
-      const response = await fetch(apiUrl(`/api/auth/admin/mentors/${mentorId}/approve`), {
-        method: 'POST',
-        credentials: 'include',
-        headers: csrfHeaders('POST'),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Could not approve mentor.');
-      setMentors((current) => current.map((mentor) => (
-        mentor.id === mentorId ? { ...mentor, approved: true } : mentor
-      )));
-    } catch (requestError) {
-      setActionError(requestError.message);
-    } finally {
-      setApproving(null);
-    }
-  };
-
   return (
     <div className="py-4">
-      <PageHeader title="Admin Dashboard" subtitle={user ? `Welcome, ${user.full_name}. Manage student accounts and mentor approvals.` : 'Manage student accounts and mentor approvals.'} />
-      {actionError && <div className="alert alert-danger" role="alert">{actionError}</div>}
+      <PageHeader title="Admin Dashboard" subtitle={user ? `Welcome, ${user.full_name}. Manage student and mentor accounts.` : 'Manage student and mentor accounts.'} />
       <div className="card border-0 shadow-sm">
         <div className="card-body">
           <div className="row g-3 align-items-end mb-3">
@@ -82,26 +57,20 @@ export default function AdminDashboard() {
               </select>
             </div>
             <div className="card border-0 shadow-sm mt-4">
-              <div className="card-header bg-transparent fw-bold">Mentor account approvals</div>
+              <div className="card-header bg-transparent fw-bold">Mentor accounts</div>
               <div className="card-body">
                 {loading && <p role="status">Loading mentor accounts…</p>}
                 {!loading && mentors.length === 0 && <p className="text-secondary mb-0">No mentor accounts registered.</p>}
                 {!loading && mentors.length > 0 && (
                   <div className="table-responsive">
                     <table className="table align-middle mb-0">
-                      <thead><tr><th>Name</th><th>Employee ID</th><th>Email</th><th>Department</th><th>Status</th><th /></tr></thead>
+                      <thead><tr><th>Name</th><th>Employee ID</th><th>Email</th><th>Department</th></tr></thead>
                       <tbody>{mentors.map((mentor) => (
                         <tr key={mentor.id}>
                           <td>{mentor.full_name}</td>
                           <td>{mentor.employee_id}</td>
                           <td>{mentor.email}</td>
                           <td>{departmentLabel(mentor.department)}</td>
-                          <td><span className={`badge ${mentor.approved ? 'text-bg-success' : 'text-bg-warning'}`}>{mentor.approved ? 'Approved' : 'Pending'}</span></td>
-                          <td>{!mentor.approved && (
-                            <button type="button" className="btn btn-sm btn-outline-primary" disabled={approving === mentor.id} onClick={() => approveMentor(mentor.id)}>
-                              {approving === mentor.id ? 'Approving…' : 'Approve'}
-                            </button>
-                          )}</td>
                         </tr>
                       ))}</tbody>
                     </table>

@@ -2,7 +2,9 @@ import { useState, useMemo } from 'react';
 import { useStore } from '../hooks/useStore';
 import { Modal, ConfirmModal, PageHeader, ProgressBar, Empty, Field, DIFF_TONE, ColorSwatchSelector, SubjectColorBadge } from '../components/common';
 import { uid } from '../utils/dates';
-import { SUBJECT_COLORS, getSubjectColor } from '../utils/defaults';
+import { SUBJECT_COLORS } from '../utils/defaults';
+
+const SUBJECT_CARD_PALETTE = ['#EAF2FF', '#E7F5F2', '#F0EBFF', '#FFF0E6', '#EAF4FA', '#EAF5E9'];
 
 const blank = (colorIndex = 0) => ({
   id: uid(),
@@ -160,7 +162,6 @@ export default function Subjects() {
       {/* Subjects Grid */}
       <div className="row g-3">
         {filteredSubjects.map((s, idx) => {
-          const color = getSubjectColor(s, idx);
           const topics = s.topics || [];
           const done = topics.filter((t) => t.done).length;
           const remaining = Math.max(0, topics.length - done);
@@ -171,45 +172,24 @@ export default function Subjects() {
           return (
             <div className="col-md-6 col-xl-4" key={s.id}>
               <div
-                className="card h-100 border-0 shadow-sm transition-all"
+                className="card subject-card h-100 border-0 shadow-sm transition-all"
                 style={{
-                  borderLeft: `5px solid ${color}`,
-                  borderRadius: '10px',
+                  '--subject-card-background': SUBJECT_CARD_PALETTE[idx % SUBJECT_CARD_PALETTE.length],
                 }}
               >
                 <div className="card-body d-flex flex-column">
-                  {/* Card Header Info */}
-                  <div className="d-flex justify-content-between align-items-start gap-2 mb-2">
-                    <div className="min-w-0">
-                      <div className="d-flex align-items-center gap-2 flex-wrap mb-1">
-                        {s.code && (
-                          <span
-                            className="badge"
-                            style={{
-                              backgroundColor: color,
-                              color: '#fff',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                            }}
-                          >
-                            {s.code}
-                          </span>
-                        )}
-                        <span className={`badge text-bg-${DIFF_TONE[s.difficulty] || 'secondary'}`}>
-                          {s.difficulty}
-                        </span>
-                        <span className={`badge text-bg-${s.category === 'exam' ? 'primary' : 'secondary'}`}>
-                          {s.category === 'exam' ? 'Outside Exam' : s.category === 'optional' ? 'Optional' : 'College'}
-                        </span>
-                      </div>
-                      <h5 className="card-title fw-bold text-truncate mb-0" title={s.name}>
-                        {s.name}
-                      </h5>
+                  <div className="subject-card-topline">
+                    <div className="d-flex align-items-center gap-2 flex-wrap subject-card-badges">
+                      {s.code && <span className="badge subject-meta-badge">{s.code}</span>}
+                      <span className="badge subject-meta-badge">{s.difficulty}</span>
+                      <span className="badge subject-meta-badge">
+                        {s.category === 'exam' ? 'Outside Exam' : s.category === 'optional' ? 'Optional' : 'College'}
+                      </span>
                     </div>
-
-                    <div className="btn-group btn-group-sm flex-shrink-0">
+                    <div className="subject-card-actions" aria-label={`${s.name} actions`}>
                       <button
-                        className="btn btn-outline-secondary"
+                        type="button"
+                        className="btn btn-outline-secondary subject-action-button"
                         onClick={() => setDetailSubject(s)}
                         title="View Details"
                         aria-label="View Details"
@@ -217,7 +197,8 @@ export default function Subjects() {
                         <i className="bi bi-info-circle" />
                       </button>
                       <button
-                        className="btn btn-outline-secondary"
+                        type="button"
+                        className="btn btn-outline-secondary subject-action-button"
                         onClick={() => setForm({ ...s })}
                         title="Edit Subject"
                         aria-label="Edit Subject"
@@ -225,7 +206,8 @@ export default function Subjects() {
                         <i className="bi bi-pencil" />
                       </button>
                       <button
-                        className="btn btn-outline-danger"
+                        type="button"
+                        className="btn btn-outline-danger subject-action-button"
                         onClick={() => setDeleteTarget(s)}
                         title="Delete Subject"
                         aria-label="Delete Subject"
@@ -234,19 +216,22 @@ export default function Subjects() {
                       </button>
                     </div>
                   </div>
+                  <h5 className="card-title subject-card-title mb-3" title={s.name}>
+                    {s.name}
+                  </h5>
 
-                  {exam && (
-                    <div className="small text-muted mb-2">
-                      <i className="bi bi-mortarboard me-1 text-primary" />
-                      Linked to: <strong>{exam.name}</strong>
-                    </div>
-                  )}
+                  <div className="small subject-supporting-text subject-exam-link mb-2">
+                    {exam && (
+                      <>
+                        <i className="bi bi-mortarboard me-1 text-primary" />
+                        Linked to: <strong>{exam.name}</strong>
+                      </>
+                    )}
+                  </div>
 
-                  {s.description && (
-                    <p className="small text-secondary mb-2 text-truncate-2" style={{ maxHeight: '2.6em', overflow: 'hidden' }}>
-                      {s.description}
-                    </p>
-                  )}
+                  <p className="small subject-supporting-text subject-description mb-2">
+                    {s.description}
+                  </p>
 
                   {/* Topic Progress bar */}
                   <div className="mt-auto pt-2">
@@ -257,7 +242,7 @@ export default function Subjects() {
                         {remaining > 0 && <span className="text-secondary ms-1">({remaining} left)</span>}
                       </span>
                     </div>
-                    <ProgressBar value={pct} customColor={color} height={8} />
+                    <ProgressBar value={pct} customColor="#0f766e" height={8} />
 
                     <div className="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
                       <button
@@ -267,7 +252,7 @@ export default function Subjects() {
                         <i className={`bi bi-chevron-${isOpen ? 'up' : 'down'} me-1`} />
                         {isOpen ? 'Hide topics' : `Manage topics (${topics.length})`}
                       </button>
-                      <span className="small text-secondary">
+                      <span className="small text-secondary subject-scheduling-weight">
                         {s.difficulty === 'Hard' ? 'High scheduling weight' : s.difficulty === 'Easy' ? 'Low weight' : 'Normal weight'}
                       </span>
                     </div>

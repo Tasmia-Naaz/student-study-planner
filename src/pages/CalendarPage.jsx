@@ -39,9 +39,9 @@ export default function CalendarPage({ go }) {
   }, [data.subjects]);
 
   const eventStyle = (color) => ({
-    backgroundColor: `color-mix(in srgb, ${color} 15%, var(--bs-tertiary-bg))`,
+    backgroundColor: `color-mix(in srgb, ${color} 22%, #fff)`,
     borderColor: `color-mix(in srgb, ${color} 25%, var(--bs-border-color))`,
-    color: 'var(--bs-body-color)',
+    color: '#172554',
   });
 
   // Aggregate all calendar events with subject colors and types
@@ -267,13 +267,13 @@ export default function CalendarPage({ go }) {
                         return (
                           <div
                             key={s.id}
-                            className={`session-card mb-2 p-2 rounded ${s.done ? 'session-done' : ''}`}
+                            className={`session-card calendar-session-card mb-2 p-2 rounded ${s.done ? 'session-done' : ''}`}
                             style={{
                               borderLeft: isStudy ? `5px solid ${color}` : '3px dashed var(--bs-border-color)',
-                              backgroundColor: isStudy ? 'var(--bs-tertiary-bg)' : 'transparent',
+                              backgroundColor: `color-mix(in srgb, ${isStudy ? color : '#94a3b8'} 12%, #fff)`,
                             }}
                           >
-                            <div className="d-flex align-items-center gap-2">
+                            <div className="d-flex align-items-center gap-2 calendar-session-row">
                               {isStudy && (
                                 <input
                                   className="form-check-input mt-0"
@@ -282,10 +282,10 @@ export default function CalendarPage({ go }) {
                                   onChange={() => toggleSession(s.id)}
                                 />
                               )}
-                              <div className="small font-monospace text-secondary" style={{ minWidth: timeFormat === '12h' ? 122 : 90 }}>
+                              <div className="small font-monospace calendar-session-time" style={{ minWidth: timeFormat === '12h' ? 122 : 90 }}>
                                 {fmtTimeRange(s.start, s.end, timeFormat)}
                               </div>
-                              <div className="fw-semibold flex-grow-1 text-truncate">
+                              <div className="fw-semibold flex-grow-1 calendar-session-title">
                                 {s.title} {s.topic ? `· ${s.topic}` : ''}
                               </div>
                               {s.label && <span className="badge text-bg-light border small">{s.label}</span>}
@@ -392,11 +392,11 @@ export default function CalendarPage({ go }) {
                 eventsFor(selected).map((e, i) => (
                   <div
                     key={i}
-                    className="p-2 mb-2 rounded small text-white cursor-pointer shadow-sm"
+                    className="calendar-event-card p-2 mb-2 rounded small cursor-pointer shadow-sm"
                     style={{ ...e.bgStyle, cursor: 'pointer' }}
                     onClick={() => setActiveEvent(e)}
                   >
-                    <div className="fw-bold">{e.text}</div>
+                    <div className="calendar-event-title">{e.text}</div>
                   </div>
                 ))
               )}

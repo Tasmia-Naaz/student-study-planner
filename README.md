@@ -9,7 +9,9 @@ A responsive study-planning app built with React, Vite, Bootstrap, and a Flask A
 - Rule-based timetable generation based on availability, with study sessions and breaks.
 - Calendar, exams, assignments, study tasks, backlogs, and daily progress tracking.
 - Progress reports, light/dark themes, reminders, and JSON backup/import.
-- Role-based student, mentor, and admin areas, including mentor approval and assignments.
+- Role-based student, mentor, and admin areas, including mentor assignments.
+- Student registration automatically derives a read-only college email from the unique student ID.
+- Each student can receive one permanent mentor assignment; the original assignment history is retained.
 - Student/mentor messaging and persisted notifications.
 
 Planner data is available locally in the browser. When signed in, student progress and portal data are synchronized with the Flask API. The backend uses SQLite by default; PostgreSQL can be configured for deployment.
@@ -43,7 +45,15 @@ flask --app backend.wsgi create-admin --email admin@example.edu
 python -m backend.app
 ```
 
-The administrator command prompts for a name and a password of at least 12 characters. Mentor accounts require admin approval before sign-in.
+Before deploying an application update, back up the existing database and apply pending migrations against that same database:
+
+```powershell
+flask --app backend.wsgi db upgrade
+```
+
+The permanent mentor assignment migration records each student's earliest existing assignment as their permanent claim without changing or deleting assignment history.
+
+The administrator command prompts for a name and a password of at least 12 characters. Mentors can sign in as soon as they register.
 
 ### 2. Run the frontend
 
@@ -100,6 +110,8 @@ Configure the existing Flask web service with:
 - **Root Directory:** repository root
 - **Build Command:** `pip install -r backend/requirements.txt`
 - **Start Command:** `gunicorn backend.wsgi:app`
+
+Before deploying the new backend version, back up the configured production database and run `flask --app backend.wsgi db upgrade` using the Flask service's existing environment and `DATABASE_URL`. This applies pending migrations to the existing database; do not point it at a new database.
 
 Set these environment variables on the Flask service:
 

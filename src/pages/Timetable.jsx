@@ -33,17 +33,6 @@ const BREAK_ICON = {
   meal: 'egg-fried',
 };
 
-function hexToRgba(hex, alpha = 0.06) {
-  if (!hex || typeof hex !== 'string') return `rgba(15, 118, 110, ${alpha})`;
-  let c = hex.replace('#', '');
-  if (c.length === 3) c = c.split('').map((x) => x + x).join('');
-  if (c.length !== 6) return `rgba(15, 118, 110, ${alpha})`;
-  const r = parseInt(c.substring(0, 2), 16);
-  const g = parseInt(c.substring(2, 4), 16);
-  const b = parseInt(c.substring(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 function getSessionBadgeClass(label) {
   if (!label) return 'badge-tag-default';
   if (label.includes('Revision') || label.includes('Exam')) return 'badge-tag-warning';
@@ -120,7 +109,6 @@ export default function Timetable({ go }) {
 
   const timeFormat = data.settings?.timeFormat || '12h';
   const goalMin = (Number(data.settings?.dailyGoal) || 0) * 60;
-  const isDark = data.settings?.theme === 'dark';
 
   // Build subject lookup map for colors, codes, and names
   const subjectMap = useMemo(() => {
@@ -645,7 +633,7 @@ export default function Timetable({ go }) {
                 className={`timetable-item study-item ${s.done ? 'is-done' : ''} shadow-sm`}
                 style={{
                   borderLeftColor: subjectColor,
-                  backgroundColor: hexToRgba(subjectColor, isDark ? 0.12 : 0.05),
+                  backgroundColor: `color-mix(in srgb, ${subjectColor} 22%, #fff)`,
                 }}
               >
                 <div className="timetable-item-grid">
@@ -667,8 +655,8 @@ export default function Timetable({ go }) {
                         <span
                           className="subject-code-tag"
                           style={{
-                            backgroundColor: subjectColor,
-                            color: '#ffffff',
+                            backgroundColor: `color-mix(in srgb, ${subjectColor} 18%, #fff)`,
+                            color: '#172554',
                           }}
                         >
                           {subj.code}

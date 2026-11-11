@@ -57,6 +57,23 @@ class MentorAssignment(db.Model):
     )
 
 
+class PermanentMentorAssignment(db.Model):
+    __tablename__ = "permanent_mentor_assignments"
+    student_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.id", ondelete="RESTRICT"),
+        primary_key=True,
+    )
+    mentor_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    assignment_id = db.Column(
+        db.Integer,
+        db.ForeignKey("mentor_assignments.id", ondelete="RESTRICT"),
+        nullable=False,
+        unique=True,
+    )
+    assigned_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+
 class Backlog(db.Model):
     __tablename__ = "backlogs"
     id = db.Column(db.Integer, primary_key=True)
